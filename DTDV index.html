@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Drug-Target-Disease Visualizer</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; margin: 0; }
+    input { margin: 20px; padding: 8px; width: 300px; }
+    #graph { width: 100vw; height: 80vh; }
+    svg { width: 100%; height: 100%; }
+  </style>
+</head>
+<body>
+  <h1>Drug-Target-Disease Visualizer</h1>
+  <input type="text" id="drugInput" placeholder="Enter Drug Name (e.g., Aspirin)" />
+  <div id="graph"></div>
+
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script>
+    const sampleData = {
+      "Aspirin": {
+        nodes: [
+          { id: "Aspirin", group: "drug" },
+          { id: "PTGS1", group: "target" },
+          { id: "PTGS2", group: "target" },
+          { id: "Inflammation", group: "disease" },
+          { id: "Cardiovascular Disease", group: "disease" },
+        ],
+        links: [
+          { source: "Aspirin", target: "PTGS1" },
+          { source: "Aspirin", target: "PTGS2" },
+          { source: "PTGS1", target: "Inflammation" },
+          { source: "PTGS2", target: "Cardiovascular Disease" },
+        ],
+      },
+      "Paracetamol": {
+        nodes: [
+          { id: "Paracetamol", group: "drug" },
+          { id: "CYP2E1", group: "target" },
+          { id: "Liver Toxicity", group: "disease" },
+        ],
+        links: [
+          { source: "Paracetamol", target: "CYP2E1" },
+          { source: "CYP2E1", target: "Liver Toxicity" },
+        ],
+      },
+    };
+
+    document.getElementById("drugInput").addEventListener("input", function () {
+      const drug = this.value.trim();
+      if (sampleData[drug]) {
+        renderGraph(sampleData[drug]);
+      }
+    });
+
+    function renderGraph(data) {
+      document.getElementById("graph").innerHTML = "";
+      const svg = d3.select("#graph").append("svg");
+      const width = document.getElementById("graph").clientWidth;
+      const height = document.getElementById("graph").clientHeight;
+
+      const color = d3.scaleOrdinal()
+        .domain(["drug", "target", "disease"])
+        .range(["#1f77b4", "#2ca02c", "#d62728"]);
+
+      const simulation = d3.forceSimulation(data.nodes)
+        .force("link", d3.forceLink(data.links).id(d => d.id).distance(120))
+        .force("charge", d3.forceManyBody().strength(-400))
+        .force("center", d3.forceCenter(width / 2, height / 2));
+
+      const link = svg.append("g")
+        .selectAll("line")
+        .data(data.links)
+        .enter()
+        .append("line")
+        .attr("stroke", "#999").attr("stroke-width", 2);
+
+      const node = svg.append("g")
+        .selectAll("circle")
+        .data(data.nodes)
+        .enter()
+        .append("circle")
+        .attr("r", 15)
+        .attr("fill", d => color(d.group))
+        .call(d3.drag()
+          .on("start", dragStarted)
+          .on("drag", dragged)
+          .on("end", dragEnded));
+
+      const label = svg.append("g")
+        .selectAll("text")
+        .data(data.nodes)
+        .enter()
+        .append("text")
+        .text(d => d.id)
+        .attr("text-anchor", "middle")
+        .attr("dy", 4)
+        .attr("font-size", "12px");
+
+      simulation.on("tick", () => {
+        link
+          .attr("x1", d => d.source.x)
+          .attr("y1", d => d.source.y)
+          .attr("x2", d => d.target.x)
+          .attr("y2", d => d.target.y);
+
+        node
+          .attr("cx", d => d.x)
+          .attr("cy", d => d.y);
+
+        label
+          .attr("x", d => d.x)
+          .attr("y", d => d.y);
+      });
+
+      function dragStarted(event, d) {
+        if (!event.active) simulation.alphaTarget(0.3).restart();
+        d.fx = d.x;
+        d.fy = d.y;
+      }
+
+      function dragged(event, d) {
+        d.fx = event.x;
+        d.fy = event.y;
+      }
+
+      function dragEnded(event, d) {
+        if (!event.active) simulation.alphaTarget(0);
+        d.fx = null;
+        d.fy = null;
+      }
+    }
+  </script>
+</body>
+</html>
